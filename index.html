@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Badminton Tournament — Break-Even Calculator | Adambakkam, Chennai</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #171d26;
+    --panel-2: #1e2633;
+    --line: #2a3441;
+    --text: #e6edf3;
+    --muted: #8b98a8;
+    --accent: #4da3ff;
+    --good: #3ddc84;
+    --bad: #ff5c5c;
+    --warn: #ffb020;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+  }
+  header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 18px; margin: 0; font-weight: 650; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  .presets { margin-left: auto; display: flex; gap: 8px; }
+  button.preset {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    padding: 7px 13px; border-radius: 7px; cursor: pointer; font-size: 13px;
+  }
+  button.preset:hover { border-color: var(--accent); color: var(--accent); }
+
+  .layout { display: flex; align-items: flex-start; }
+  aside {
+    width: 360px; flex: none; border-right: 1px solid var(--line);
+    background: var(--panel); height: calc(100vh - 61px); overflow-y: auto; padding: 8px 0 60px;
+    position: sticky; top: 0;
+  }
+  main { flex: 1; padding: 22px; min-width: 0; }
+
+  .group { border-bottom: 1px solid var(--line); }
+  .group > summary {
+    padding: 12px 18px; cursor: pointer; font-weight: 600; font-size: 13px;
+    letter-spacing: .3px; text-transform: uppercase; color: var(--muted); list-style: none;
+  }
+  .group > summary::-webkit-details-marker { display: none; }
+  .group > summary::before { content: "▸ "; color: var(--accent); }
+  .group[open] > summary::before { content: "▾ "; }
+  .group > summary:hover { color: var(--text); }
+  .ctrl { padding: 8px 18px 12px; }
+  .ctrl .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .ctrl label { font-size: 13px; color: var(--text); }
+  .ctrl .hint { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+  .ctrl input[type=number] {
+    width: 86px; background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 5px; padding: 4px 7px; text-align: right; font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 20px; }
+  .toggle { display: flex; align-items: center; gap: 9px; padding: 7px 18px 9px; font-size: 13px; }
+  .toggle input { accent-color: var(--accent); width: 15px; height: 15px; }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 15px; }
+  .kpi .k { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 7px; }
+  .kpi .v { font-size: 23px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .kpi .n { font-size: 11px; color: var(--muted); margin-top: 5px; }
+  .kpi.hero { grid-column: span 2; }
+  .good { color: var(--good); } .bad { color: var(--bad); } .warn { color: var(--warn); }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-bottom: 18px; }
+  .card h2 { font-size: 14px; margin: 0 0 14px; font-weight: 650; letter-spacing: .2px; }
+  .card h2 small { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 8px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 1150px) { .grid2 { grid-template-columns: 1fr; } }
+
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 13px; }
+  th, td { padding: 7px 9px; text-align: right; border-bottom: 1px solid var(--line); }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
+  tbody tr:last-child td { border-bottom: none; }
+  tr.total td { font-weight: 650; border-top: 1px solid var(--line); }
+  td.dim, th.dim { color: var(--muted); }
+
+  canvas { width: 100%; display: block; }
+  #chartProfit, #chartCost { height: 270px; }
+  #chartTornado { height: 300px; }
+  .alerts { margin-bottom: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .alert { padding: 10px 14px; border-radius: 8px; font-size: 13px; border-left: 3px solid; line-height: 1.5; }
+  .alert.bad { background: rgba(255,92,92,.10); border-color: var(--bad); color: #ffc0c0; }
+  .alert.warn { background: rgba(255,176,32,.10); border-color: var(--warn); color: #ffdfa8; }
+  .alert.ok { background: rgba(61,220,132,.10); border-color: var(--good); color: #b5f2d0; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .pill.good { background: rgba(61,220,132,.15); }
+  .pill.bad { background: rgba(255,92,92,.15); }
+  .pill.warn { background: rgba(255,176,32,.15); }
+  .foot { color: var(--muted); font-size: 12px; line-height: 1.6; }
+  .sched { font-size: 13px; }
+  .sched .slot { display: flex; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .sched .slot:last-child { border-bottom: none; }
+  .sched .t { width: 152px; flex: none; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .sched .d { flex: 1; }
+  .sched .m { color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Badminton Tournament — Break-Even Calculator</h1>
+  <span class="sub">Men's Doubles + Mixed Doubles · Adambakkam, Chennai · all figures ₹ INR</span>
+  <div class="presets">
+    <button class="preset" data-preset="community">Community</button>
+    <button class="preset" data-preset="balanced">Balanced</button>
+    <button class="preset" data-preset="premium">Premium</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside id="controls"></aside>
+
+  <main>
+    <div class="kpis" id="kpis"></div>
+    <div class="alerts" id="alerts"></div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>Profit vs. Number of Teams <small>stepped — court blocks jump the cost curve</small></h2>
+        <canvas id="chartProfit" height="260"></canvas>
+      </div>
+      <div class="card">
+        <h2>Where the Money Goes <small>share of total cost</small></h2>
+        <canvas id="chartCost" height="260"></canvas>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>Cost Sheet <small>fixed vs. variable</small></h2>
+        <table id="tblCosts"></table>
+      </div>
+      <div class="card">
+        <h2>Sensitivity <small>one variable at a time, vs. current setup</small></h2>
+        <canvas id="chartTornado" height="280"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Format &amp; Court Economics</h2>
+      <table id="tblFormat"></table>
+    </div>
+
+    <div class="card">
+      <h2>Tournament Size Scenarios <small>courts auto-sized, prize held at current % of revenue</small></h2>
+      <table id="tblScenarios"></table>
+    </div>
+
+    <div class="card">
+      <h2>Prize Pool vs. Teams Needed to Break Even <small>at current cost assumptions</small></h2>
+      <table id="tblMatrix"></table>
+      <p class="foot" id="matrixNote"></p>
+    </div>
+
+    <div class="card">
+      <h2>Tournament Day Schedule <small>generated from the current setup</small></h2>
+      <div class="sched" id="schedule"></div>
+    </div>
+
+    <div class="card">
+      <h2>Assumptions &amp; Method</h2>
+      <div class="foot" id="assumptions"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ───────────────────────── Control definitions ───────────────────────── */
+const GROUPS = [
+  { name: "Tournament Size", open: true, items: [
+    { id:"teamsMD", label:"Men's Doubles teams", min:4, max:48, step:2, val:16 },
+    { id:"teamsXD", label:"Mixed Doubles teams", min:0, max:48, step:2, val:16 },
+    { id:"poolSize", label:"Teams per pool", min:3, max:5, step:1, val:4,
+      hint:"Pool of 4 = 3 guaranteed matches per team. The single biggest driver of player satisfaction." },
+    { id:"advance", label:"Teams advancing per pool", min:1, max:2, step:1, val:2 },
+  ]},
+  { name: "Entry Fee & Income", open: true, items: [
+    { id:"feeMD", label:"Entry fee — Men's Doubles", min:500, max:3500, step:50, val:2000, cur:true },
+    { id:"feeXD", label:"Entry fee — Mixed Doubles", min:500, max:3500, step:50, val:2000, cur:true },
+    { id:"sponsorship", label:"Sponsorship income", min:0, max:60000, step:1000, val:0, cur:true },
+    { id:"noShowPct", label:"No-show / withdrawal rate", min:0, max:25, step:1, val:0, pct:true },
+  ]},
+  { name: "Courts & Time", open: true, items: [
+    { id:"courts", label:"Number of courts", min:2, max:12, step:1, val:4 },
+    { id:"venueCourts", label:"Courts available at venue", min:2, max:12, step:1, val:6,
+      hint:"Most Adambakkam venues have 4–6. Used to flag scenarios that are not physically deliverable." },
+    { id:"courtRate", label:"Court rate per hour", min:200, max:900, step:25, val:400, cur:true },
+    { id:"slotMin", label:"Minutes per match slot", min:20, max:50, step:1, val:30,
+      hint:"Includes play, knock-up and court turnover." },
+    { id:"packingPct", label:"Scheduling slack", min:0, max:30, step:1, val:12, pct:true,
+      hint:"Courts are never perfectly packed — gaps waiting for players, walkovers, overruns." },
+    { id:"maxPlayHrs", label:"Max play hours in a day", min:6, max:12, step:0.5, val:9 },
+    { id:"overheadHrs", label:"Non-play hours", min:1, max:4, step:0.25, val:2.25,
+      hint:"Registration, briefing, breaks, prize distribution." },
+    { id:"bufferHrs", label:"Court booking buffer", min:0, max:3, step:0.5, val:1,
+      hint:"Extra booked hours you pay for whether used or not." },
+  ]},
+  { name: "Variable Costs", open: false, items: [
+    { id:"shuttlePerMatch", label:"Shuttles per match", min:0, max:500, step:10, val:150, cur:true,
+      hint:"₹150 ≈ 2 mid-grade feather shuttles. Nylon ≈ ₹80. Premium feather ≈ ₹300." },
+    { id:"waterPerPlayer", label:"Water + refreshment / player", min:0, max:300, step:10, val:70, cur:true },
+    { id:"certPerPlayer", label:"Certificate / player", min:0, max:100, step:5, val:20, cur:true },
+    { id:"gatewayPct", label:"Payment gateway fee", min:0, max:5, step:0.25, val:2, pct:true },
+  ]},
+  { name: "Fixed Costs", open: false, items: [
+    { id:"referee", label:"Chief referee / director", min:0, max:15000, step:500, val:3000, cur:true },
+    { id:"volunteers", label:"Volunteers / court marshals", min:0, max:12000, step:500, val:0, cur:true },
+    { id:"trophies", label:"Trophies & medals", min:0, max:25000, step:500, val:3500, cur:true },
+    { id:"printing", label:"Printing, banners, posters", min:0, max:12000, step:250, val:1500, cur:true },
+    { id:"marketing", label:"Marketing & promotion", min:0, max:15000, step:250, val:500, cur:true },
+    { id:"firstAid", label:"First aid & emergency", min:0, max:6000, step:250, val:1000, cur:true },
+    { id:"equipment", label:"Scoreboards, tape, stationery", min:0, max:6000, step:100, val:800, cur:true },
+    { id:"photography", label:"Photography / videography", min:0, max:20000, step:500, val:0, cur:true },
+    { id:"extraStaffPerCourt", label:"Extra staff per court above 4", min:0, max:3000, step:250, val:1000, cur:true },
+    { id:"contingencyPct", label:"Contingency buffer", min:0, max:25, step:1, val:7, pct:true },
+  ]},
+  { name: "Prize Money", open: true, items: [
+    { id:"prizeMD", label:"Prize pool — Men's Doubles", min:0, max:50000, step:500, val:6000, cur:true },
+    { id:"prizeXD", label:"Prize pool — Mixed Doubles", min:0, max:50000, step:500, val:6000, cur:true },
+  ]},
+];
+
+const TOGGLES = [
+  { id:"thirdPlace", label:"Run a 3rd-place playoff", val:true },
+  { id:"autoCourts", label:"Auto-size courts to fit the day", val:false },
+  { id:"refundNoShows", label:"Refund entry fee to no-shows", val:false },
+];
+
+const PRESETS = {
+  community: { teamsMD:12, teamsXD:12, feeMD:1200, feeXD:1200, slotMin:25, shuttlePerMatch:80,
+    waterPerPlayer:50, referee:0, volunteers:0, trophies:3000, printing:1000, marketing:0,
+    firstAid:800, equipment:600, photography:0, prizeMD:2000, prizeXD:2000, courts:3, courtRate:400 },
+  balanced: { teamsMD:16, teamsXD:16, feeMD:2000, feeXD:2000, slotMin:30, shuttlePerMatch:150,
+    waterPerPlayer:70, referee:3000, volunteers:0, trophies:3500, printing:1500, marketing:500,
+    firstAid:1000, equipment:800, photography:0, prizeMD:6000, prizeXD:6000, courts:4, courtRate:400 },
+  premium: { teamsMD:24, teamsXD:24, feeMD:3000, feeXD:3000, slotMin:30, shuttlePerMatch:250,
+    waterPerPlayer:150, certPerPlayer:25, referee:3000, volunteers:4000, trophies:10000, printing:4000,
+    marketing:5000, firstAid:1500, equipment:2000, photography:6000, prizeMD:12500, prizeXD:12500,
+    courts:6, courtRate:400 },
+};
+
+/* ───────────────────────── State ───────────────────────── */
+const S = {};
+GROUPS.forEach(g => g.items.forEach(i => S[i.id] = i.val));
+TOGGLES.forEach(t => S[t.id] = t.val);
+
+/* ───────────────────────── Model ───────────────────────── */
+const inr = n => (n < 0 ? "−₹" : "₹") + Math.abs(Math.round(n)).toLocaleString("en-IN");
+const inr1 = n => "₹" + (Math.round(n * 10) / 10).toLocaleString("en-IN");
+const pct = n => (n * 100).toFixed(1) + "%";
+const hrs = n => (Math.round(n * 10) / 10) + " h";
+
+// Matches for one category of N teams.
+function categoryMatches(N, poolSize, advance, thirdPlace) {
+  if (N < 2) return { pools:0, poolMatches:0, koDraw:0, koMatches:0, third:0, total:0, guaranteed:0 };
+  const pools = Math.max(1, Math.ceil(N / poolSize));
+  const avgPool = N / pools;
+  const poolMatches = Math.round(N * (avgPool - 1) / 2);
+  const rawQual = Math.min(N, pools * advance);
+  const koDraw = rawQual >= 2 ? Math.pow(2, Math.floor(Math.log2(rawQual))) : 0;
+  const koMatches = koDraw >= 2 ? koDraw - 1 : 0;
+  const third = (thirdPlace && koDraw >= 4) ? 1 : 0;
+  return { pools, avgPool, poolMatches, koDraw, koMatches, third,
+           total: poolMatches + koMatches + third,
+           guaranteed: Math.round((avgPool - 1) * 10) / 10 };
+}
+
+function compute(o = {}) {
+  const s = Object.assign({}, S, o);
+
+  const md = categoryMatches(s.teamsMD, s.poolSize, s.advance, s.thirdPlace);
+  const xd = categoryMatches(s.teamsXD, s.poolSize, s.advance, s.thirdPlace);
+  const matches = md.total + xd.total;
+  const teams = s.teamsMD + s.teamsXD;
+  const players = teams * 2;
+
+  // Court time
+  const slack = 1 + s.packingPct / 100;
+  const usedCourtHrs = matches * s.slotMin / 60;
+  const courtsNeeded = Math.max(1, Math.ceil(usedCourtHrs * slack / s.maxPlayHrs));
+  const courts = s.autoCourts ? courtsNeeded : s.courts;
+  const playHrs = courts > 0 ? usedCourtHrs * slack / courts : 0;
+  const bookedHrs = Math.ceil(playHrs) + s.bufferHrs;
+  const paidCourtHrs = bookedHrs * courts;
+  const courtCost = paidCourtHrs * s.courtRate;
+  const utilisation = paidCourtHrs > 0 ? usedCourtHrs / paidCourtHrs : 0;
+  const dayHrs = playHrs + s.overheadHrs;
+
+  // No-shows: schedule and court booking are already committed; consumables are not.
+  const showRate = 1 - s.noShowPct / 100;
+  const payingMD = s.refundNoShows ? s.teamsMD * showRate : s.teamsMD;
+  const payingXD = s.refundNoShows ? s.teamsXD * showRate : s.teamsXD;
+  const entryRevenue = payingMD * s.feeMD + payingXD * s.feeXD;
+  const revenue = entryRevenue + s.sponsorship;
+
+  // Variable costs
+  const shuttles = matches * s.shuttlePerMatch * showRate;
+  const water = players * showRate * s.waterPerPlayer;
+  const certs = players * showRate * s.certPerPlayer;
+  const gateway = entryRevenue * s.gatewayPct / 100;
+
+  // Fixed costs
+  const extraStaff = Math.max(0, courts - 4) * s.extraStaffPerCourt;
+  const fixed = s.referee + s.volunteers + s.trophies + s.printing + s.marketing +
+                s.firstAid + s.equipment + s.photography + extraStaff;
+
+  const operating = courtCost + shuttles + water + certs + gateway + fixed;
+  const contingency = operating * s.contingencyPct / 100;
+  const prize = s.prizeMD + s.prizeXD;
+  const totalCost = operating + contingency + prize;
+  const profit = revenue - totalCost;
+  const margin = revenue > 0 ? profit / revenue : 0;
+
+  // Break-even (court share treated as variable; it is stepped in reality)
+  const cFactor = 1 + s.contingencyPct / 100;
+  const avgFee = teams > 0 ? entryRevenue / teams : 0;
+  const varPerTeam = teams > 0
+    ? (courtCost / teams + shuttles / teams + 2 * s.waterPerPlayer * showRate
+       + 2 * s.certPerPlayer * showRate + avgFee * s.gatewayPct / 100) * cFactor
+    : 0;
+  const fixedLoaded = fixed * cFactor + prize - s.sponsorship;
+  const contribution = avgFee - varPerTeam;
+  const beTeams = contribution > 0 ? fixedLoaded / contribution : Infinity;
+  const beFee = teams > 0 ? varPerTeam + fixedLoaded / teams : 0;
+  const prizeShare = revenue > 0 ? prize / revenue : 0;
+
+  return { s, md, xd, matches, teams, players, usedCourtHrs, courtsNeeded, courts, playHrs,
+    bookedHrs, paidCourtHrs, courtCost, utilisation, dayHrs, revenue, entryRevenue,
+    shuttles, water, certs, gateway, fixed, extraStaff, operating, contingency, prize,
+    totalCost, profit, margin, varPerTeam, fixedLoaded, contribution, beTeams, beFee,
+    avgFee, prizeShare, costPerMatch: matches ? courtCost / matches : 0,
+    courtPerTeam: teams ? courtCost / teams : 0 };
+}
+
+/* ───────────────────────── UI build ───────────────────────── */
+function buildControls() {
+  const host = document.getElementById("controls");
+  GROUPS.forEach(g => {
+    const d = document.createElement("details");
+    d.className = "group";
+    if (g.open) d.open = true;
+    d.innerHTML = `<summary>${g.name}</summary>`;
+    g.items.forEach(i => {
+      const w = document.createElement("div");
+      w.className = "ctrl";
+      w.innerHTML = `
+        <div class="row">
+          <label for="r_${i.id}">${i.label}</label>
+          <input type="number" id="n_${i.id}" min="${i.min}" max="${i.max}" step="${i.step}" value="${i.val}">
+        </div>
+        <input type="range" id="r_${i.id}" min="${i.min}" max="${i.max}" step="${i.step}" value="${i.val}">
+        ${i.hint ? `<div class="hint">${i.hint}</div>` : ""}`;
+      d.appendChild(w);
+      const r = w.querySelector(`#r_${i.id}`), n = w.querySelector(`#n_${i.id}`);
+      const set = v => {
+        v = Math.min(i.max, Math.max(i.min, Number(v)));
+        if (Number.isNaN(v)) v = i.val;
+        S[i.id] = v; r.value = v; n.value = v; render();
+      };
+      r.addEventListener("input", e => set(e.target.value));
+      n.addEventListener("change", e => set(e.target.value));
+    });
+    host.appendChild(d);
+  });
+
+  const t = document.createElement("details");
+  t.className = "group"; t.open = true;
+  t.innerHTML = `<summary>Options</summary>`;
+  TOGGLES.forEach(tg => {
+    const w = document.createElement("div");
+    w.className = "toggle";
+    w.innerHTML = `<input type="checkbox" id="c_${tg.id}" ${tg.val ? "checked" : ""}><label for="c_${tg.id}">${tg.label}</label>`;
+    t.appendChild(w);
+    w.querySelector("input").addEventListener("change", e => { S[tg.id] = e.target.checked; render(); });
+  });
+  document.getElementById("controls").appendChild(t);
+}
+
+function applyPreset(name) {
+  const p = PRESETS[name];
+  GROUPS.forEach(g => g.items.forEach(i => { S[i.id] = (i.id in p) ? p[i.id] : i.val; }));
+  S.autoCourts = false;
+  GROUPS.forEach(g => g.items.forEach(i => {
+    document.getElementById("r_" + i.id).value = S[i.id];
+    document.getElementById("n_" + i.id).value = S[i.id];
+  }));
+  document.getElementById("c_autoCourts").checked = false;
+  render();
+}
+
+/* ───────────────────────── Charts ───────────────────────── */
+function fit(id) {
+  const c = document.getElementById(id);
+  const rect = c.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  c.width = Math.max(1, rect.width * dpr);
+  c.height = Math.max(1, rect.height * dpr);
+  const ctx = c.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+  ctx.font = "11px -apple-system, sans-serif";
+  return { ctx, w: rect.width, h: rect.height };
+}
+const CSSVAR = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+function drawProfitChart(pts, markerTeams) {
+  const { ctx, w, h } = fit("chartProfit");
+  const pad = { l: 62, r: 14, t: 14, b: 44 };
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  let y0 = Math.min(0, ...ys), y1 = Math.max(0, ...ys);
+  const padY = (y1 - y0) * 0.1 || 1000; y0 -= padY; y1 += padY;
+  const X = v => pad.l + (v - x0) / (x1 - x0 || 1) * (w - pad.l - pad.r);
+  const Y = v => h - pad.b - (v - y0) / (y1 - y0 || 1) * (h - pad.t - pad.b);
+
+  ctx.strokeStyle = CSSVAR("--line"); ctx.fillStyle = CSSVAR("--muted");
+  for (let i = 0; i <= 4; i++) {
+    const v = y0 + (y1 - y0) * i / 4, y = Y(v);
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+    ctx.textAlign = "right"; ctx.fillText(inr(v), pad.l - 8, y + 4);
+  }
+  ctx.textAlign = "center";
+  for (let v = Math.ceil(x0 / 8) * 8; v <= x1; v += 8) ctx.fillText(v, X(v), h - pad.b + 17);
+  ctx.fillText("total teams (both categories)", (pad.l + w - pad.r) / 2, h - 6);
+
+  // zero line
+  ctx.strokeStyle = CSSVAR("--muted"); ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(pad.l, Y(0)); ctx.lineTo(w - pad.r, Y(0)); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // area + line
+  ctx.beginPath();
+  pts.forEach((p, i) => i ? ctx.lineTo(X(p.x), Y(p.y)) : ctx.moveTo(X(p.x), Y(p.y)));
+  ctx.lineTo(X(pts[pts.length - 1].x), Y(0)); ctx.lineTo(X(pts[0].x), Y(0)); ctx.closePath();
+  const g = ctx.createLinearGradient(0, pad.t, 0, h - pad.b);
+  g.addColorStop(0, "rgba(77,163,255,.28)"); g.addColorStop(1, "rgba(77,163,255,0)");
+  ctx.fillStyle = g; ctx.fill();
+
+  ctx.beginPath();
+  pts.forEach((p, i) => i ? ctx.lineTo(X(p.x), Y(p.y)) : ctx.moveTo(X(p.x), Y(p.y)));
+  ctx.strokeStyle = CSSVAR("--accent"); ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 1;
+
+  const cur = pts.reduce((a, b) => Math.abs(b.x - markerTeams) < Math.abs(a.x - markerTeams) ? b : a);
+  ctx.fillStyle = cur.y >= 0 ? CSSVAR("--good") : CSSVAR("--bad");
+  ctx.beginPath(); ctx.arc(X(cur.x), Y(cur.y), 5, 0, 7); ctx.fill();
+  ctx.textAlign = X(cur.x) > w / 2 ? "right" : "left";
+  ctx.fillText(`you are here: ${cur.x} teams · ${inr(cur.y)}`,
+    X(cur.x) + (X(cur.x) > w / 2 ? -10 : 10), Y(cur.y) - 10);
+}
+
+function drawCostChart(m) {
+  const { ctx, w, h } = fit("chartCost");
+  const items = [
+    ["Court rental", m.courtCost, "#4da3ff"],
+    ["Prize money", m.prize, "#3ddc84"],
+    ["Shuttlecocks", m.shuttles, "#ffb020"],
+    ["Fixed costs", m.fixed, "#b47cff"],
+    ["Water & refreshments", m.water, "#ff7ab6"],
+    ["Contingency", m.contingency, "#7d8ba0"],
+    ["Gateway fees", m.gateway, "#ff5c5c"],
+    ["Certificates", m.certs, "#4ad9d9"],
+  ].filter(i => i[1] > 0).sort((a, b) => b[1] - a[1]);
+  const total = items.reduce((s, i) => s + i[1], 0) || 1;
+  const rowH = Math.min(34, (h - 10) / items.length);
+  const labelW = Math.min(170, w * 0.32), valW = 108;
+  const barMax = Math.max(20, w - labelW - valW);
+  items.forEach((it, i) => {
+    const y = 6 + i * rowH;
+    ctx.fillStyle = CSSVAR("--text"); ctx.textAlign = "left";
+    ctx.fillText(it[0], 0, y + rowH / 2 + 3);
+    ctx.fillStyle = it[2];
+    ctx.fillRect(labelW, y + 3, Math.max(2, it[1] / total * barMax), rowH - 9);
+    ctx.fillStyle = CSSVAR("--muted"); ctx.textAlign = "right";
+    ctx.fillText(inr(it[1]) + "  ·  " + (it[1] / total * 100).toFixed(0) + "%", w - 2, y + rowH / 2 + 3);
+  });
+}
+
+function drawTornado(rows) {
+  const { ctx, w, h } = fit("chartTornado");
+  const max = Math.max(...rows.map(r => Math.abs(r.delta))) || 1;
+  const labelW = Math.min(200, w * 0.34), valW = 86;
+  const half = Math.max(20, (w - labelW - valW) / 2), mid = labelW + half;
+  const rowH = Math.min(30, (h - 8) / rows.length);
+  ctx.strokeStyle = CSSVAR("--line");
+  ctx.beginPath(); ctx.moveTo(mid, 2); ctx.lineTo(mid, rows.length * rowH + 6); ctx.stroke();
+  rows.forEach((r, i) => {
+    const y = 4 + i * rowH;
+    ctx.fillStyle = CSSVAR("--text"); ctx.textAlign = "left";
+    ctx.fillText(r.label, 0, y + rowH / 2 + 3);
+    const len = Math.abs(r.delta) / max * half;
+    ctx.fillStyle = r.delta >= 0 ? CSSVAR("--good") : CSSVAR("--bad");
+    ctx.fillRect(r.delta >= 0 ? mid : mid - len, y + 4, Math.max(2, len), rowH - 11);
+    ctx.textAlign = "right";
+    ctx.fillText((r.delta >= 0 ? "+" : "−") + inr(Math.abs(r.delta)), w - 2, y + rowH / 2 + 3);
+  });
+}
+
+/* ───────────────────────── Render ───────────────────────── */
+function render() {
+  const m = compute();
+  const cls = v => v >= 0 ? "good" : "bad";
+
+  /* KPIs */
+  document.getElementById("kpis").innerHTML = `
+    <div class="kpi hero">
+      <div class="k">Profit / Loss</div>
+      <div class="v ${cls(m.profit)}">${inr(m.profit)}</div>
+      <div class="n">margin ${pct(m.margin)} · ${m.profit >= 0 ? "above" : "below"} break-even by
+        ${Math.abs(m.teams - m.beTeams) < 999 ? Math.abs(Math.round(m.teams - m.beTeams)) + " teams" : "—"}</div>
+    </div>
+    <div class="kpi"><div class="k">Revenue</div><div class="v">${inr(m.revenue)}</div>
+      <div class="n">${m.teams} teams · ${m.players} players</div></div>
+    <div class="kpi"><div class="k">Total Cost</div><div class="v">${inr(m.totalCost)}</div>
+      <div class="n">${inr(m.totalCost / (m.teams || 1))} per team</div></div>
+    <div class="kpi"><div class="k">Break-even Teams</div>
+      <div class="v ${m.beTeams <= m.teams ? "good" : "bad"}">${isFinite(m.beTeams) ? Math.ceil(m.beTeams) : "∞"}</div>
+      <div class="n">you have ${m.teams}</div></div>
+    <div class="kpi"><div class="k">Break-even Entry Fee</div>
+      <div class="v ${m.beFee <= m.avgFee ? "good" : "bad"}">${inr(m.beFee)}</div>
+      <div class="n">charging ${inr(m.avgFee)}</div></div>
+    <div class="kpi"><div class="k">Contribution / Team</div>
+      <div class="v ${cls(m.contribution)}">${inr(m.contribution)}</div>
+      <div class="n">fee ${inr(m.avgFee)} − variable ${inr(m.varPerTeam)}</div></div>
+    <div class="kpi"><div class="k">Total Matches</div><div class="v">${m.matches}</div>
+      <div class="n">${m.md.guaranteed} guaranteed per team</div></div>
+    <div class="kpi"><div class="k">Day Length</div>
+      <div class="v ${m.dayHrs > 12 ? "bad" : m.dayHrs > 10.5 ? "warn" : ""}">${hrs(m.dayHrs)}</div>
+      <div class="n">${hrs(m.playHrs)} of play on ${m.courts} courts</div></div>
+    <div class="kpi"><div class="k">Court Cost</div><div class="v">${inr(m.courtCost)}</div>
+      <div class="n">${m.paidCourtHrs} paid court-hrs · ${pct(m.utilisation)} used</div></div>
+    <div class="kpi"><div class="k">Prize Pool</div><div class="v">${inr(m.prize)}</div>
+      <div class="n">${pct(m.prizeShare)} of revenue</div></div>`;
+
+  /* Alerts */
+  const a = [];
+  if (m.contribution <= 0)
+    a.push(["bad", `<b>Structurally unviable.</b> Every extra team <i>loses</i> ${inr(-m.contribution)}.
+      Variable cost per team (${inr(m.varPerTeam)}) exceeds the entry fee (${inr(m.avgFee)}).
+      No number of teams will break even — raise the fee, shorten match slots or cut shuttle cost.`]);
+  else if (m.profit < 0)
+    a.push(["bad", `Running at a loss of ${inr(-m.profit)}. You need
+      ${Math.ceil(m.beTeams) - m.teams} more teams, or an entry fee of ${inr(m.beFee)}.`]);
+  else {
+    const cushion = Math.floor(m.teams - m.beTeams);
+    a.push(["ok", `Viable. ${cushion} team${cushion === 1 ? "" : "s"} of cushion — you can lose
+      ${cushion === 1 ? "one registration" : "that many registrations"} before the event goes into the red.`]);
+  }
+  if (m.dayHrs > 12)
+    a.push(["bad", `Day runs ${hrs(m.dayHrs)}. Not deliverable in one day — add courts, cut the match slot,
+      or split across two days.`]);
+  else if (m.dayHrs > 10.5)
+    a.push(["warn", `Day runs ${hrs(m.dayHrs)}. Long but feasible with a 7:30 am start. Expect late-stage attrition.`]);
+  if (m.courts > m.s.venueCourts)
+    a.push(["warn", `${m.courts} courts assumed but you have said the venue has ${m.s.venueCourts}.
+      Verify availability, book a second venue, or spread the event over two days.`]);
+  if (!S.autoCourts && m.courtsNeeded > m.courts)
+    a.push(["warn", `At this match volume you need ${m.courtsNeeded} courts to finish within
+      ${m.s.maxPlayHrs} h of play. You have set ${m.courts}.`]);
+  if (m.prizeShare > 0.25)
+    a.push(["warn", `Prize money is ${pct(m.prizeShare)} of revenue. Above ~25% leaves no buffer
+      if registrations fall short.`]);
+  else if (m.prizeShare < 0.12 && m.prize > 0)
+    a.push(["warn", `Prize money is only ${pct(m.prizeShare)} of revenue. Below ~12% players tend to
+      feel the entry fee is not worth it.`]);
+  if (m.utilisation < 0.7)
+    a.push(["warn", `Court utilisation is only ${pct(m.utilisation)} — you are paying for
+      ${Math.round(m.paidCourtHrs - m.usedCourtHrs)} idle court-hours (${inr((m.paidCourtHrs - m.usedCourtHrs) * m.s.courtRate)}).
+      Ask the venue to release courts as the draw narrows.`]);
+  document.getElementById("alerts").innerHTML =
+    a.map(x => `<div class="alert ${x[0]}">${x[1]}</div>`).join("");
+
+  /* Cost table */
+  const varRows = [
+    ["Court rental", m.courtCost, `${m.paidCourtHrs} court-hrs × ${inr(m.s.courtRate)}`],
+    ["Shuttlecocks", m.shuttles, `${m.matches} matches × ${inr(m.s.shuttlePerMatch)}`],
+    ["Water & refreshments", m.water, `${Math.round(m.players * (1 - m.s.noShowPct / 100))} players × ${inr(m.s.waterPerPlayer)}`],
+    ["Certificates", m.certs, `${Math.round(m.players * (1 - m.s.noShowPct / 100))} × ${inr(m.s.certPerPlayer)}`],
+    ["Payment gateway", m.gateway, `${m.s.gatewayPct}% of entry revenue`],
+  ];
+  const fixRows = [
+    ["Chief referee / director", m.s.referee], ["Volunteers / marshals", m.s.volunteers],
+    ["Trophies & medals", m.s.trophies], ["Printing & banners", m.s.printing],
+    ["Marketing", m.s.marketing], ["First aid & emergency", m.s.firstAid],
+    ["Equipment & stationery", m.s.equipment], ["Photography", m.s.photography],
+    ["Extra staff for courts > 4", m.extraStaff],
+  ].filter(r => r[1] > 0);
+  const varTotal = varRows.reduce((s, r) => s + r[1], 0);
+  document.getElementById("tblCosts").innerHTML = `
+    <thead><tr><th>Item</th><th>Amount</th><th class="dim">Driver</th></tr></thead>
+    <tbody>
+      <tr><td colspan="3" class="dim"><b>Variable — scales with teams &amp; matches</b></td></tr>
+      ${varRows.map(r => `<tr><td>${r[0]}</td><td>${inr(r[1])}</td><td class="dim">${r[2]}</td></tr>`).join("")}
+      <tr class="total"><td>Variable subtotal</td><td>${inr(varTotal)}</td>
+        <td class="dim">${inr(varTotal / (m.teams || 1))} / team</td></tr>
+      <tr><td colspan="3" class="dim"><b>Fixed — independent of team count</b></td></tr>
+      ${fixRows.map(r => `<tr><td>${r[0]}</td><td>${inr(r[1])}</td><td class="dim">fixed</td></tr>`).join("")}
+      <tr class="total"><td>Fixed subtotal</td><td>${inr(m.fixed)}</td>
+        <td class="dim">${inr(m.fixed / (m.teams || 1))} / team</td></tr>
+      <tr><td>Contingency @ ${m.s.contingencyPct}%</td><td>${inr(m.contingency)}</td><td class="dim">on operating costs</td></tr>
+      <tr><td>Prize money</td><td>${inr(m.prize)}</td><td class="dim">${pct(m.prizeShare)} of revenue</td></tr>
+      <tr class="total"><td>Total cost</td><td>${inr(m.totalCost)}</td><td class="dim">${inr(m.totalCost / (m.teams || 1))} / team</td></tr>
+      <tr class="total"><td>Revenue</td><td>${inr(m.revenue)}</td><td class="dim">${inr(m.avgFee)} avg fee</td></tr>
+      <tr class="total"><td>Profit / loss</td><td class="${cls(m.profit)}">${inr(m.profit)}</td>
+        <td class="dim">margin ${pct(m.margin)}</td></tr>
+    </tbody>`;
+
+  /* Format & court economics */
+  const fmtRow = (n, c) => `<tr><td>${n}</td><td>${c.pools || "—"}</td><td>${c.poolMatches}</td>
+    <td>${c.koDraw || "—"}</td><td>${c.koMatches + c.third}</td><td>${c.total}</td><td>${c.guaranteed || "—"}</td></tr>`;
+  document.getElementById("tblFormat").innerHTML = `
+    <thead><tr><th>Category</th><th>Pools</th><th>Pool matches</th><th>KO draw</th>
+      <th>KO matches</th><th>Total</th><th>Guaranteed / team</th></tr></thead>
+    <tbody>
+      ${fmtRow("Men's Doubles (" + m.s.teamsMD + " teams)", m.md)}
+      ${fmtRow("Mixed Doubles (" + m.s.teamsXD + " teams)", m.xd)}
+      <tr class="total"><td>Combined</td><td>${m.md.pools + m.xd.pools}</td>
+        <td>${m.md.poolMatches + m.xd.poolMatches}</td><td>—</td>
+        <td>${m.md.koMatches + m.md.third + m.xd.koMatches + m.xd.third}</td>
+        <td>${m.matches}</td><td>—</td></tr>
+    </tbody>
+    <thead><tr><th>Court economics</th><th colspan="6"></th></tr></thead>
+    <tbody>
+      <tr><td>Court-hours used</td><td colspan="6">${hrs(m.usedCourtHrs)}</td></tr>
+      <tr><td>Court-hours paid for</td><td colspan="6">${m.paidCourtHrs} h (${m.courts} courts × ${m.bookedHrs} h booked)</td></tr>
+      <tr><td>Court utilisation</td><td colspan="6" class="${m.utilisation < 0.7 ? "warn" : "good"}">${pct(m.utilisation)}</td></tr>
+      <tr><td>Court cost per match</td><td colspan="6">${inr(m.costPerMatch)}</td></tr>
+      <tr><td>Court cost per team</td><td colspan="6">${inr(m.courtPerTeam)}</td></tr>
+      <tr><td>Courts required to fit ${m.s.maxPlayHrs} h of play</td><td colspan="6">${m.courtsNeeded}</td></tr>
+    </tbody>`;
+
+  /* Profit curve — sweep total teams, holding the MD:XD ratio */
+  const ratio = m.teams > 0 ? m.s.teamsMD / m.teams : 0.5;
+  const pts = [];
+  for (let T = 8; T <= 72; T += 2) {
+    const mdN = Math.round(T * ratio / 2) * 2;
+    const r = compute({ teamsMD: mdN, teamsXD: T - mdN, autoCourts: true });
+    pts.push({ x: T, y: r.profit });
+  }
+  drawProfitChart(pts, m.teams);
+  drawCostChart(m);
+
+  /* Sensitivity */
+  const base = m.profit;
+  const d = (label, o) => ({ label, delta: compute(o).profit - base });
+  const tor = [
+    d("Entry fee +₹250", { feeMD: m.s.feeMD + 250, feeXD: m.s.feeXD + 250 }),
+    d("Entry fee −₹250", { feeMD: Math.max(0, m.s.feeMD - 250), feeXD: Math.max(0, m.s.feeXD - 250) }),
+    d("10 more teams", { teamsMD: m.s.teamsMD + 5, teamsXD: m.s.teamsXD + 5 }),
+    d("10 fewer teams", { teamsMD: Math.max(4, m.s.teamsMD - 5), teamsXD: Math.max(0, m.s.teamsXD - 5) }),
+    d("Match slot 30 → 40 min", { slotMin: Math.min(50, m.s.slotMin + 10) }),
+    d("Court rate +₹100/hr", { courtRate: m.s.courtRate + 100 }),
+    d("Prize money +₹5,000", { prizeMD: m.s.prizeMD + 2500, prizeXD: m.s.prizeXD + 2500 }),
+    d("Shuttles +₹100/match", { shuttlePerMatch: m.s.shuttlePerMatch + 100 }),
+    d("10% no-shows, refunded", { noShowPct: 10, refundNoShows: true }),
+  ].sort((x, y) => Math.abs(y.delta) - Math.abs(x.delta));
+  drawTornado(tor);
+
+  /* Scenarios */
+  const sizes = [8, 12, 16, 24, 32];
+  const share = m.prizeShare || 0.1875;
+  const sc = sizes.map(n => {
+    const pre = compute({ teamsMD: n, teamsXD: n, autoCourts: true, prizeMD: 0, prizeXD: 0 });
+    const p = Math.round(pre.revenue * share / 500) * 500;
+    return { n, r: compute({ teamsMD: n, teamsXD: n, autoCourts: true, prizeMD: p / 2, prizeXD: p / 2 }) };
+  });
+  const scRow = (label, f, fmt = inr, klass = null) =>
+    `<tr><td>${label}</td>${sc.map(x => {
+      const v = f(x.r);
+      return `<td class="${klass ? klass(v) : ""}">${fmt(v)}</td>`;
+    }).join("")}</tr>`;
+  document.getElementById("tblScenarios").innerHTML = `
+    <thead><tr><th>Per category</th>${sizes.map(n => `<th>${n} teams</th>`).join("")}</tr></thead>
+    <tbody>
+      ${scRow("Total teams", r => r.teams, v => v)}
+      ${scRow("Total matches", r => r.matches, v => v)}
+      ${scRow("Court-hours used", r => r.usedCourtHrs, hrs)}
+      ${scRow("Courts required", r => r.courts, v => v)}
+      ${scRow("Day length", r => r.dayHrs, hrs, v => v > 12 ? "bad" : v > 10.5 ? "warn" : "")}
+      ${scRow("Court cost", r => r.courtCost)}
+      ${scRow("Other operating costs", r => r.shuttles + r.water + r.certs + r.gateway + r.fixed)}
+      ${scRow("Contingency", r => r.contingency)}
+      ${scRow("Prize money", r => r.prize)}
+      ${scRow("Total cost", r => r.totalCost)}
+      ${scRow("Revenue", r => r.revenue)}
+      ${scRow("Profit / loss", r => r.profit, inr, v => v >= 0 ? "good" : "bad")}
+      ${scRow("Margin", r => r.margin, pct, v => v >= 0 ? "good" : "bad")}
+      ${scRow("Break-even teams", r => r.beTeams, v => isFinite(v) ? Math.ceil(v) : "never")}
+      ${scRow("Fits in one day", r => r, v => (v.dayHrs <= 12 && v.courts <= v.s.venueCourts)
+        ? '<span class="pill good">yes</span>'
+        : v.dayHrs > 12
+          ? '<span class="pill bad">no — too long</span>'
+          : `<span class="pill bad">needs ${v.courts} courts</span>`)}
+    </tbody>`;
+
+  /* Prize matrix */
+  const fees = [1250, 1500, 1750, 2000, 2250, 2500, 3000];
+  const pools = [5000, 10000, 15000, 20000, 25000, 30000];
+  const cell = (pool, fee) => {
+    const r = compute({ feeMD: fee, feeXD: fee, prizeMD: pool / 2, prizeXD: pool / 2 });
+    if (r.contribution <= 0) return `<td class="bad">never</td>`;
+    const n = Math.ceil(r.beTeams);
+    const k = n > 64 ? "bad" : n > 48 ? "warn" : "good";
+    return `<td class="${k}">${n}</td>`;
+  };
+  document.getElementById("tblMatrix").innerHTML = `
+    <thead><tr><th>Total prize pool</th>${fees.map(f => `<th>${inr(f)}/team</th>`).join("")}</tr></thead>
+    <tbody>${pools.map(p => `<tr><td>${inr(p)}</td>${fees.map(f => cell(p, f)).join("")}</tr>`).join("")}</tbody>`;
+  document.getElementById("matrixNote").innerHTML =
+    `Each cell is the number of teams needed to break even at that prize pool and entry fee, using your current
+     cost settings. <span class="pill good">green</span> comfortably achievable ·
+     <span class="pill warn">amber</span> needs 48+ teams, a long day and 6+ courts ·
+     <span class="pill bad">red</span> not deliverable in one day at this venue.
+     "never" means the entry fee does not even cover that team's own variable cost.`;
+
+  /* Schedule */
+  const start = 7.5;
+  const mdPoolSlots = m.md.pools ? Math.ceil(m.md.poolMatches / Math.max(1, m.courts)) : 0;
+  const xdPoolSlots = m.xd.pools ? Math.ceil(m.xd.poolMatches / Math.max(1, m.courts)) : 0;
+  const koSlots = Math.ceil((m.md.koMatches + m.md.third + m.xd.koMatches + m.xd.third) / Math.max(1, m.courts));
+  const slotH = m.s.slotMin / 60 * (1 + m.s.packingPct / 100);
+  const clock = t => {
+    const hh = Math.floor(t), mm = Math.round((t - hh) * 60);
+    const ap = hh >= 12 ? "pm" : "am", h12 = ((hh + 11) % 12) + 1;
+    return `${h12}:${String(mm).padStart(2, "0")} ${ap}`;
+  };
+  let t = start;
+  const blocks = [];
+  const push = (dur, title, note) => { blocks.push([t, t + dur, title, note]); t += dur; };
+  push(0.5, "Registration & check-in", "Collect balance fees, confirm partners, hand out draw sheets");
+  push(0.25, "Player briefing", "Scoring format, walkover rules, court discipline");
+  if (mdPoolSlots) push(mdPoolSlots * slotH, `Men's Doubles pool stage — ${m.md.poolMatches} matches`,
+    `One pool per court, ${mdPoolSlots} rounds of ${m.s.slotMin} min. Each team plays ${m.md.guaranteed} matches with a round's rest between.`);
+  push(0.25, "Changeover & lunch rotation", "Men's Doubles-only players are released");
+  if (xdPoolSlots) push(xdPoolSlots * slotH, `Mixed Doubles pool stage — ${m.xd.poolMatches} matches`,
+    `Run as a separate block so players entered in both categories are never double-booked.`);
+  push(0.25, "Knockout draw & buffer", "Absorbs accumulated overruns");
+  if (koSlots) push(koSlots * slotH, `Knockouts — ${m.md.koMatches + m.xd.koMatches} matches` +
+    (m.md.third + m.xd.third ? ` + ${m.md.third + m.xd.third} 3rd-place playoff` : ""),
+    `Both categories in parallel. Give semis and finals a longer slot; release surplus courts here to cut rental.`);
+  push(0.5, "Prize distribution", "Photos, sponsor mentions, feedback forms");
+  document.getElementById("schedule").innerHTML = blocks.map(b =>
+    `<div class="slot"><div class="t">${clock(b[0])} – ${clock(b[1])}</div>
+     <div class="d">${b[2]}<div class="m">${b[3]}</div></div></div>`).join("") +
+    `<div class="slot"><div class="t"><b>${hrs(t - start)}</b></div>
+     <div class="d"><b>Total day length</b><div class="m">Finishes ${clock(t)}.
+     Courts booked ${clock(start + 0.5)}–${clock(start + 0.5 + m.bookedHrs)} (${m.paidCourtHrs} court-hours paid).
+     If you run 60+ min late: drop pool matches to a single game to 15, cut knock-up to 3 minutes,
+     and run the 3rd-place playoff alongside the final.</div></div></div>`;
+
+  /* Assumptions */
+  document.getElementById("assumptions").innerHTML = `
+    <b>Format.</b> Pools of ${m.s.poolSize}, top ${m.s.advance} advance to a knockout draw rounded down to the
+    nearest power of two${m.s.thirdPlace ? ", plus a 3rd-place playoff" : ""}. Pool matches =
+    n(n−1)/2 per pool; knockout matches = draw size − 1.<br>
+    <b>Court time.</b> Court-hours used = matches × ${m.s.slotMin} min. Elapsed play time adds ${m.s.packingPct}%
+    scheduling slack, then rounds <i>up</i> to a whole booked hour and adds a ${m.s.bufferHrs} h buffer — venues
+    bill whole hours and do not refund idle courts, so paid court-hours (${m.paidCourtHrs}) exceed used
+    court-hours (${Math.round(m.usedCourtHrs * 10) / 10}).<br>
+    <b>Break-even.</b> Break-even teams = fixed costs (loaded with contingency) + prize money − sponsorship,
+    divided by contribution per team. Contribution = entry fee − variable cost per team. Because court blocks
+    are stepped rather than linear, the profit curve above is the reliable guide; the formula is the approximation.<br>
+    <b>Category overlap.</b> A man may enter both Men's Doubles and Mixed Doubles, so unique players are fewer
+    than 2 × team entries — but revenue is charged per team entry, so overlap does not reduce income. It does
+    create scheduling conflicts, which is why the two categories are scheduled as sequential blocks.<br>
+    <b>No-shows.</b> Court hire is already committed and is not recovered. Shuttles, water and certificates
+    scale down with attendance. Refunding no-shows removes their entry fee from revenue.<br>
+    <b>Market rates (Chennai, assumed — verify locally).</b> Court ₹${m.s.courtRate}/hr ·
+    shuttles ₹${m.s.shuttlePerMatch}/match (nylon ≈ ₹80, mid feather ≈ ₹150, premium feather ≈ ₹300) ·
+    water &amp; refreshments ₹${m.s.waterPerPlayer}/player · payment gateway ${m.s.gatewayPct}% ·
+    contingency ${m.s.contingencyPct}%. Every one of these is a slider — change it and the whole model recalculates.`;
+}
+
+/* ───────────────────────── Boot ───────────────────────── */
+buildControls();
+document.querySelectorAll("button.preset").forEach(b =>
+  b.addEventListener("click", () => applyPreset(b.dataset.preset)));
+window.addEventListener("resize", () => render());
+render();
+</script>
+</body>
+</html>
