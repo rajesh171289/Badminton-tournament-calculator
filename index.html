@@ -217,13 +217,15 @@ const GROUPS = [
       hint:"Extra booked hours you pay for whether used or not." },
   ]},
   { name: "Variable Costs", open: false, items: [
-    { id:"shuttlePerMatch", label:"Shuttles per match", min:0, max:500, step:10, val:150, cur:true,
-      hint:"₹150 ≈ 2 mid-grade feather shuttles. Nylon ≈ ₹80. Premium feather ≈ ₹300." },
     { id:"waterPerPlayer", label:"Water + refreshment / player", min:0, max:300, step:10, val:70, cur:true },
     { id:"certPerPlayer", label:"Certificate / player", min:0, max:100, step:5, val:20, cur:true },
     { id:"gatewayPct", label:"Payment gateway fee", min:0, max:5, step:0.25, val:2, pct:true },
   ]},
   { name: "Fixed Costs", open: false, items: [
+    { id:"shuttleBoxes", label:"Shuttle boxes for the whole tournament", min:0, max:60, step:1, val:8,
+      hint:"Buy for the event, not per match — shuttles are reused across matches. A box of 6 typically lasts 3–4 pool matches." },
+    { id:"shuttleBoxCost", label:"Cost per shuttle box", min:0, max:4000, step:50, val:1200, cur:true,
+      hint:"Box of 6: nylon ≈ ₹600, mid-grade feather ≈ ₹1,200, premium feather ≈ ₹2,400." },
     { id:"referee", label:"Chief referee / director", min:0, max:15000, step:500, val:3000, cur:true },
     { id:"volunteers", label:"Volunteers / court marshals", min:0, max:12000, step:500, val:0, cur:true },
     { id:"trophies", label:"Trophies & medals", min:0, max:25000, step:500, val:3500, cur:true },
@@ -248,13 +250,13 @@ const TOGGLES = [
 ];
 
 const PRESETS = {
-  community: { teamsMD:12, teamsXD:12, feeMD:1200, feeXD:1200, slotMin:25, shuttlePerMatch:80,
+  community: { teamsMD:12, teamsXD:12, feeMD:1200, feeXD:1200, slotMin:25, shuttleBoxes:6, shuttleBoxCost:600,
     waterPerPlayer:50, referee:0, volunteers:0, trophies:3000, printing:1000, marketing:0,
     firstAid:800, equipment:600, photography:0, prizeMD:2000, prizeXD:2000, courts:3, courtRate:400 },
-  balanced: { teamsMD:16, teamsXD:16, feeMD:2000, feeXD:2000, slotMin:30, shuttlePerMatch:150,
+  balanced: { teamsMD:16, teamsXD:16, feeMD:2000, feeXD:2000, slotMin:30, shuttleBoxes:8, shuttleBoxCost:1200,
     waterPerPlayer:70, referee:3000, volunteers:0, trophies:3500, printing:1500, marketing:500,
     firstAid:1000, equipment:800, photography:0, prizeMD:6000, prizeXD:6000, courts:4, courtRate:400 },
-  premium: { teamsMD:24, teamsXD:24, feeMD:3000, feeXD:3000, slotMin:30, shuttlePerMatch:250,
+  premium: { teamsMD:24, teamsXD:24, feeMD:3000, feeXD:3000, slotMin:30, shuttleBoxes:10, shuttleBoxCost:2200,
     waterPerPlayer:150, certPerPlayer:25, referee:3000, volunteers:4000, trophies:10000, printing:4000,
     marketing:5000, firstAid:1500, equipment:2000, photography:6000, prizeMD:12500, prizeXD:12500,
     courts:6, courtRate:400 },
@@ -315,17 +317,19 @@ function compute(o = {}) {
   const revenue = entryRevenue + s.sponsorship;
 
   // Variable costs
-  const shuttles = matches * s.shuttlePerMatch * showRate;
   const water = players * showRate * s.waterPerPlayer;
   const certs = players * showRate * s.certPerPlayer;
   const gateway = entryRevenue * s.gatewayPct / 100;
 
   // Fixed costs
+  // Shuttles are bought in boxes for the whole event and reused across matches.
+  const shuttles = s.shuttleBoxes * s.shuttleBoxCost;
   const extraStaff = Math.max(0, courts - 4) * s.extraStaffPerCourt;
   const fixed = s.referee + s.volunteers + s.trophies + s.printing + s.marketing +
                 s.firstAid + s.equipment + s.photography + extraStaff;
+  const fixedAll = fixed + shuttles;
 
-  const operating = courtCost + shuttles + water + certs + gateway + fixed;
+  const operating = courtCost + fixedAll + water + certs + gateway;
   const contingency = operating * s.contingencyPct / 100;
   const prize = s.prizeMD + s.prizeXD;
   const totalCost = operating + contingency + prize;
@@ -336,10 +340,10 @@ function compute(o = {}) {
   const cFactor = 1 + s.contingencyPct / 100;
   const avgFee = teams > 0 ? entryRevenue / teams : 0;
   const varPerTeam = teams > 0
-    ? (courtCost / teams + shuttles / teams + 2 * s.waterPerPlayer * showRate
+    ? (courtCost / teams + 2 * s.waterPerPlayer * showRate
        + 2 * s.certPerPlayer * showRate + avgFee * s.gatewayPct / 100) * cFactor
     : 0;
-  const fixedLoaded = fixed * cFactor + prize - s.sponsorship;
+  const fixedLoaded = fixedAll * cFactor + prize - s.sponsorship;
   const contribution = avgFee - varPerTeam;
   const beTeams = contribution > 0 ? fixedLoaded / contribution : Infinity;
   const beFee = teams > 0 ? varPerTeam + fixedLoaded / teams : 0;
@@ -347,9 +351,10 @@ function compute(o = {}) {
 
   return { s, md, xd, matches, teams, players, usedCourtHrs, courtsNeeded, courts, playHrs,
     bookedHrs, paidCourtHrs, courtCost, utilisation, dayHrs, revenue, entryRevenue,
-    shuttles, water, certs, gateway, fixed, extraStaff, operating, contingency, prize,
+    shuttles, water, certs, gateway, fixed, fixedAll, extraStaff, operating, contingency, prize,
     totalCost, profit, margin, varPerTeam, fixedLoaded, contribution, beTeams, beFee,
     avgFee, prizeShare, costPerMatch: matches ? courtCost / matches : 0,
+    shuttleCostPerMatch: matches ? shuttles / matches : 0,
     courtPerTeam: teams ? courtCost / teams : 0 };
 }
 
@@ -557,7 +562,7 @@ function render() {
   if (m.contribution <= 0)
     a.push(["bad", `<b>Structurally unviable.</b> Every extra team <i>loses</i> ${inr(-m.contribution)}.
       Variable cost per team (${inr(m.varPerTeam)}) exceeds the entry fee (${inr(m.avgFee)}).
-      No number of teams will break even — raise the fee, shorten match slots or cut shuttle cost.`]);
+      No number of teams will break even — raise the fee, shorten match slots or cut per-player spend.`]);
   else if (m.profit < 0)
     a.push(["bad", `Running at a loss of ${inr(-m.profit)}. You need
       ${Math.ceil(m.beTeams) - m.teams} more teams, or an entry fee of ${inr(m.beFee)}.`]);
@@ -593,12 +598,12 @@ function render() {
   /* Cost table */
   const varRows = [
     ["Court rental", m.courtCost, `${m.paidCourtHrs} court-hrs × ${inr(m.s.courtRate)}`],
-    ["Shuttlecocks", m.shuttles, `${m.matches} matches × ${inr(m.s.shuttlePerMatch)}`],
     ["Water & refreshments", m.water, `${Math.round(m.players * (1 - m.s.noShowPct / 100))} players × ${inr(m.s.waterPerPlayer)}`],
     ["Certificates", m.certs, `${Math.round(m.players * (1 - m.s.noShowPct / 100))} × ${inr(m.s.certPerPlayer)}`],
     ["Payment gateway", m.gateway, `${m.s.gatewayPct}% of entry revenue`],
   ];
   const fixRows = [
+    ["Shuttlecocks", m.shuttles, `${m.s.shuttleBoxes} boxes × ${inr(m.s.shuttleBoxCost)} · ≈${inr(m.shuttleCostPerMatch)} / match`],
     ["Chief referee / director", m.s.referee], ["Volunteers / marshals", m.s.volunteers],
     ["Trophies & medals", m.s.trophies], ["Printing & banners", m.s.printing],
     ["Marketing", m.s.marketing], ["First aid & emergency", m.s.firstAid],
@@ -614,9 +619,9 @@ function render() {
       <tr class="total"><td>Variable subtotal</td><td>${inr(varTotal)}</td>
         <td class="dim">${inr(varTotal / (m.teams || 1))} / team</td></tr>
       <tr><td colspan="3" class="dim"><b>Fixed — independent of team count</b></td></tr>
-      ${fixRows.map(r => `<tr><td>${r[0]}</td><td>${inr(r[1])}</td><td class="dim">fixed</td></tr>`).join("")}
-      <tr class="total"><td>Fixed subtotal</td><td>${inr(m.fixed)}</td>
-        <td class="dim">${inr(m.fixed / (m.teams || 1))} / team</td></tr>
+      ${fixRows.map(r => `<tr><td>${r[0]}</td><td>${inr(r[1])}</td><td class="dim">${r[2] || "fixed"}</td></tr>`).join("")}
+      <tr class="total"><td>Fixed subtotal</td><td>${inr(m.fixedAll)}</td>
+        <td class="dim">${inr(m.fixedAll / (m.teams || 1))} / team</td></tr>
       <tr><td>Contingency @ ${m.s.contingencyPct}%</td><td>${inr(m.contingency)}</td><td class="dim">on operating costs</td></tr>
       <tr><td>Prize money</td><td>${inr(m.prize)}</td><td class="dim">${pct(m.prizeShare)} of revenue</td></tr>
       <tr class="total"><td>Total cost</td><td>${inr(m.totalCost)}</td><td class="dim">${inr(m.totalCost / (m.teams || 1))} / team</td></tr>
@@ -671,7 +676,7 @@ function render() {
     d("Match slot 30 → 40 min", { slotMin: Math.min(50, m.s.slotMin + 10) }),
     d("Court rate +₹100/hr", { courtRate: m.s.courtRate + 100 }),
     d("Prize money +₹5,000", { prizeMD: m.s.prizeMD + 2500, prizeXD: m.s.prizeXD + 2500 }),
-    d("Shuttles +₹100/match", { shuttlePerMatch: m.s.shuttlePerMatch + 100 }),
+    d("Shuttles +4 boxes", { shuttleBoxes: m.s.shuttleBoxes + 4 }),
     d("10% no-shows, refunded", { noShowPct: 10, refundNoShows: true }),
   ].sort((x, y) => Math.abs(y.delta) - Math.abs(x.delta));
   drawTornado(tor);
@@ -783,10 +788,14 @@ function render() {
     <b>Category overlap.</b> A man may enter both Men's Doubles and Mixed Doubles, so unique players are fewer
     than 2 × team entries — but revenue is charged per team entry, so overlap does not reduce income. It does
     create scheduling conflicts, which is why the two categories are scheduled as sequential blocks.<br>
-    <b>No-shows.</b> Court hire is already committed and is not recovered. Shuttles, water and certificates
-    scale down with attendance. Refunding no-shows removes their entry fee from revenue.<br>
+    <b>No-shows.</b> Court hire is already committed and is not recovered. Water and certificates
+    scale down with attendance. Shuttle boxes are bought upfront for the whole tournament, so they do not
+    scale down either — unopened boxes can be carried to the next event. Refunding no-shows removes their
+    entry fee from revenue.<br>
     <b>Market rates (Chennai, assumed — verify locally).</b> Court ₹${m.s.courtRate}/hr ·
-    shuttles ₹${m.s.shuttlePerMatch}/match (nylon ≈ ₹80, mid feather ≈ ₹150, premium feather ≈ ₹300) ·
+    shuttles ${m.s.shuttleBoxes} boxes × ₹${m.s.shuttleBoxCost} (box of 6: nylon ≈ ₹600, mid feather ≈ ₹1,200,
+    premium feather ≈ ₹2,400) — that works out to ≈${inr(m.shuttleCostPerMatch)} per match across
+    ${m.matches} matches ·
     water &amp; refreshments ₹${m.s.waterPerPlayer}/player · payment gateway ${m.s.gatewayPct}% ·
     contingency ${m.s.contingencyPct}%. Every one of these is a slider — change it and the whole model recalculates.`;
 }
